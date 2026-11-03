@@ -1,0 +1,153 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ChemLab – Cheminformatics Virtual Laboratory</title>
+<style>
+:root{--bg:#0e1117;--p:#1a1d26;--b:#2d3140;--t:#e8eaf0;--m:#9aa0b4;--a:#34d399;--r:#f87171}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font:15px/1.5 system-ui,sans-serif}
+header{padding:16px;text-align:center;border-bottom:1px solid var(--b)}h1{margin:0;font-size:1.4rem}h2{margin:.2em 0 .6em}h3{margin:.8em 0 .3em}
+.sub{color:var(--m);font-size:.85rem}
+nav{display:flex;gap:4px;overflow-x:auto;padding:8px;border-bottom:1px solid var(--b);position:sticky;top:0;background:var(--bg);z-index:5}
+nav button{white-space:nowrap}main{max-width:980px;margin:auto;padding:14px}
+button,select,input,textarea{background:var(--p);color:var(--t);border:1px solid var(--b);border-radius:8px;padding:8px 12px;font:inherit}
+button{cursor:pointer}button:hover,nav button.on{border-color:var(--a);color:var(--a)}
+input,textarea,select{width:100%}textarea{min-height:110px;font-family:monospace}
+.bar{display:grid;grid-template-columns:1fr auto auto;gap:8px;margin-bottom:8px}@media(max-width:600px){.bar{grid-template-columns:1fr}}
+.tab{display:none}.tab.on{display:block}.card{background:var(--p);border:1px solid var(--b);border-radius:12px;padding:14px;margin:10px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.met{background:var(--bg);border:1px solid var(--b);border-radius:10px;padding:10px}.met b{display:block;font-size:1.3rem}.met span{color:var(--m);font-size:.8rem}
+.ok{color:var(--a)}.bad{color:var(--r)}table{border-collapse:collapse;width:100%;font-size:.88rem}td,th{border-bottom:1px solid var(--b);padding:6px 8px;text-align:left}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}.white{background:#fff;border-radius:10px;overflow:hidden}
+#v3d{width:100%;height:380px;position:relative;border-radius:10px;background:#fff}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}.row>*{width:auto}
+#pt{display:grid;grid-template-columns:repeat(18,minmax(34px,1fr));gap:3px;overflow-x:auto;min-width:700px}
+.el{aspect-ratio:1;border-radius:5px;font-size:.7rem;padding:2px;cursor:pointer;color:#111;line-height:1.1;border:2px solid transparent}.el b{display:block;font-size:.95rem}.el:hover,.el.sel{border-color:#fff}
+.q{margin:12px 0}.q label{display:block;padding:2px 0}.pill{padding:2px 10px;border-radius:99px;font-size:.8rem;border:1px solid}
+@media print{header,nav,.bar,#st,.noprint{display:none!important}.tab:not(.on){display:none!important}body{background:#fff;color:#000}.card{background:#fff;border-color:#999}td,th{border-color:#999}}
+</style></head><body>
+<header><h1>🧪 ChemLab – Cheminformatics Virtual Laboratory</h1><div class="sub">SMILES · 2D/3D structures · descriptors · Lipinski Rule of 5 · periodic table &amp; molar mass</div></header>
+<nav id="nav"></nav>
+<main>
+<div class="bar noprint"><input id="smi" placeholder="Enter SMILES, e.g. CCO" autocomplete="off" spellcheck="false"><select id="ex"></select><button id="load">Load</button></div>
+<div id="st" class="sub">Connecting to Python chemistry engine…</div>
+
+<section class="tab" id="home"><h2>Welcome</h2><div class="card">Explore cheminformatics interactively. Enter any SMILES above and every lab page updates for that molecule.<ul><li>Validate SMILES and view 2D structure</li><li>Interactive 3D model (ball &amp; stick, stick, space-filling, wireframe, van der Waals surface)</li><li>Complete descriptors with CSV download</li><li>Lipinski Rule of 5 oral drug-likeness checker</li><li>Compare multiple molecules</li><li>Periodic table with molar-mass calculator</li><li>Assessment and printable report</li></ul></div>
+<div class="card"><h3>Example molecules</h3><table id="extab"></table></div></section>
+
+<section class="tab" id="theory"><h2>📖 Theory</h2>
+<div class="card"><h3>What is cheminformatics?</h3>Chemistry + computer science + data analysis, used to store, process, visualise and analyse chemical information.</div>
+<div class="card"><h3>SMILES</h3>Simplified Molecular Input Line Entry System: a text string describing a structure. Ethanol <code>CCO</code>, benzene <code>c1ccccc1</code>, acetic acid <code>CC(=O)O</code>. Parentheses mark branches; <code>=</code> double, <code>#</code> triple; lowercase = aromatic.</div>
+<div class="card"><h3>Descriptors</h3>Molecular weight, LogP (lipophilicity), TPSA (topological polar surface area), H-bond donors/acceptors, rotatable bonds, ring count, Fsp3.</div>
+<div class="card"><h3>Lipinski’s Rule of 5</h3>Oral drugs tend to have MW ≤ 500, LogP ≤ 5, H-bond donors ≤ 5, acceptors ≤ 10. One violation is usually tolerated.</div>
+<div class="card"><h3>3D models</h3><b>Ball &amp; stick</b> atoms as spheres, bonds as sticks · <b>Stick</b> emphasises bonding · <b>Space filling</b> approximate volume · <b>Wireframe</b> simplified lines.</div></section>
+
+<section class="tab" id="viz"><h2>🧬 Molecular Visualization</h2>
+<div class="two"><div class="card"><h3>2D structure</h3><div class="white" id="d2"></div></div><div class="card"><h3>Information</h3><table id="info"></table></div></div>
+<div class="card"><h3>🌐 Interactive 3D structure</h3><div class="row"><select id="style"><option value="bs">Ball and Stick</option><option value="st">Stick</option><option value="sf">Space Filling</option><option value="wf">Wireframe</option></select><label><input type="checkbox" id="vdw" style="width:auto"> van der Waals surface</label><button id="gen">🔄 Reset view</button></div><div id="v3d"></div><div class="sub">3D coordinates: RDKit ETKDG embedding + MMFF optimisation on the Python server.</div></div></section>
+
+<section class="tab" id="props"><h2>📊 Molecular Properties</h2><div class="grid" id="mets"></div><div class="card"><table id="ptab"></table><div class="row"><button id="dlp">⬇️ Download CSV</button></div></div></section>
+
+<section class="tab" id="lip"><h2>💊 Lipinski Rule of 5 Checker</h2><div class="card" id="lipbox">Enter a molecule above.</div></section>
+
+<section class="tab" id="cmp"><h2>📈 Structure–Property Analysis</h2><div class="sub">One molecule per line: Name,SMILES</div><textarea id="cin">Ethanol,CCO
+Benzene,c1ccccc1
+Phenol,Oc1ccccc1
+Acetic Acid,CC(=O)O
+Aspirin,CC(=O)Oc1ccccc1C(=O)O
+Caffeine,CN1C=NC2=C1C(=O)N(C(=O)N2C)C</textarea><div class="card" style="overflow-x:auto"><table id="ctab"></table></div><button id="dlc">⬇️ Download comparison CSV</button></section>
+
+<section class="tab" id="pt-tab"><h2>⚛️ Periodic Table &amp; Molar Mass</h2>
+<div class="card"><h3>Molar mass calculator</h3><div class="row"><input id="fin" value="H2SO4" style="max-width:260px" spellcheck="false"><button id="fcalc">Calculate</button></div><div class="row" id="fchips"></div><div id="fout"></div><div class="sub">Supports parentheses and hydrates, e.g. Ca(OH)2, Al2(SO4)3, CuSO4·5H2O. Case-sensitive (Co ≠ CO).</div></div>
+<div class="card" id="eld">Tap an element to see its properties.</div><div style="overflow-x:auto"><div id="pt"></div></div></section>
+
+<section class="tab" id="quiz"><h2>📝 Assessment</h2><div id="qs"></div><button id="qsub">Submit Assessment</button><div id="qres" class="card" style="display:none"></div></section>
+
+<section class="tab" id="rep"><h2>📄 Final Student Molecular Analysis Report</h2>
+<div class="row noprint"><input id="sn" placeholder="Student name"><input id="rn" placeholder="Registration number"></div><div class="card" id="repbody">Enter a valid molecule above.</div><button class="noprint" onclick="window.print()">🖨️ Print / Save as PDF</button></section>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.0.4/3Dmol-min.js"></script>
+<script>
+const $=s=>document.querySelector(s),f=(x,d=2)=>(+x).toFixed(d);
+const EX=[["Ethanol","CCO"],["Benzene","c1ccccc1"],["Phenol","Oc1ccccc1"],["Acetic Acid","CC(=O)O"],["Aspirin","CC(=O)Oc1ccccc1C(=O)O"],["Caffeine","CN1C=NC2=C1C(=O)N(C(=O)N2C)C"],["Ibuprofen","CC(C)Cc1ccc(cc1)C(C)C(=O)O"],["Paracetamol","CC(=O)Nc1ccc(O)cc1"]];
+const TABS=[["home","🏠 Home"],["theory","📖 Theory"],["viz","🧬 Visualization"],["props","📊 Properties"],["lip","💊 Rule of 5"],["cmp","📈 Compare"],["pt-tab","⚛️ Periodic Table"],["quiz","📝 Assessment"],["rep","📄 Report"]];
+let R=null,cur=null,viewer=null,active="home";
+// ---------- tabs
+TABS.forEach(([id,l])=>{const b=document.createElement("button");b.textContent=l;b.dataset.t=id;b.onclick=()=>show(id);$("#nav").append(b)});
+function show(id){active=id;document.querySelectorAll(".tab").forEach(e=>e.classList.toggle("on",e.id==id));document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.t==id));if(id=="viz")setTimeout(render3D,50);if(id=="cmp"&&!window.cdata)compare();scrollTo(0,0)}
+$("#ex").innerHTML=EX.map(e=>`<option value="${e[1]}">${e[0]}</option>`).join("");
+$("#extab").innerHTML="<tr><th>Molecule</th><th>SMILES</th></tr>"+EX.map(e=>`<tr><td>${e[0]}</td><td><code>${e[1]}</code></td></tr>`).join("");
+$("#load").onclick=()=>{$("#smi").value=$("#ex").value;run()};$("#ex").onchange=$("#load").onclick;
+$("#smi").addEventListener("input",()=>{clearTimeout(window.tm);window.tm=setTimeout(run,350)});
+// ---------- analysis
+const RAD={H:.31,C:.76,N:.71,O:.66,F:.57,P:1.07,S:1.05,Cl:1.02,Br:1.2,I:1.39};
+async function analyze(s,embed=true){s=s.trim();if(!s)return null;try{const r=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({smiles:s,embed})});if(!r.ok)throw 0;const a=await r.json();a.s=s;return a}catch(e){return{ok:false,net:true}}}
+function ro5(P){const r=[["Molecular weight",P.mw,"≤ 500",P.mw<=500],["LogP",P.logp,"≤ 5",P.logp<=5],["H-bond donors",P.hbd,"≤ 5",P.hbd<=5],["H-bond acceptors",P.hba,"≤ 10",P.hba<=10]];return{rows:r,viol:r.filter(x=>!x[3]).length}}
+let seq=0;async function run(){const s=$("#smi").value,id=++seq;$("#st").textContent="Analysing…";$("#st").className="sub";const a=await analyze(s);if(id!==seq)return;const st=$("#st");
+ if(!a){cur=null;st.textContent="Enter a SMILES string.";st.className="sub"}
+ else if(!a.ok){cur=null;st.textContent=a.net?"❌ Cannot reach the Python API (free servers sleep – retry in ~30 s)":"❌ Invalid SMILES – please check the notation.";st.className="bad"}
+ else{cur=a;st.textContent="✅ Valid molecular structure";st.className="ok"}
+ render()}
+function render(){const a=cur,none="<div class='sub'>Enter a valid SMILES above.</div>";
+ if(!a){["#d2","#info","#mets","#ptab","#lipbox","#repbody"].forEach(i=>$(i).innerHTML=i=="#d2"?"":none);return}
+ const P=a.P;$("#d2").innerHTML=a.svg;
+ $("#info").innerHTML=[["Input SMILES",a.s],["Canonical SMILES",a.canon],["Formula",a.formula],["Heavy atoms",a.hv],["Total atoms (incl. H)",a.natoms],["Heavy-atom bonds",a.heavyBonds],["Sigma (σ) bonds",a.sig],["Pi (π) bonds",a.pi],["Total bonds",a.bonds.length]].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join("");
+ const M=[["Mol. weight",f(P.mw,3)],["LogP",f(P.logp,3)],["TPSA (Å²)",f(P.tpsa)],["Rings",P.rings],["H-bond donors",P.hbd],["H-bond acceptors",P.hba],["Rotatable bonds",P.rot],["Fraction Csp3",f(P.fsp3)]];
+ $("#mets").innerHTML=M.map(m=>`<div class="met"><span>${m[0]}</span><b>${m[1]}</b></div>`).join("");
+ a.table=[["Input SMILES",a.s],["Canonical SMILES",a.canon],["Molecular Formula",a.formula],["Molecular Weight",f(P.mw,3)],["Exact Mass",f(P.exact,4)],["LogP",f(P.logp,3)],["TPSA",f(P.tpsa)],["H-Bond Donors",P.hbd],["H-Bond Acceptors",P.hba],["Rotatable Bonds",P.rot],["Ring Count",P.rings],["Fraction Csp3",f(P.fsp3,3)],["Heavy Atoms",a.hv],["Sigma Bonds",a.sig],["Pi Bonds",a.pi]];
+ $("#ptab").innerHTML="<tr><th>Property</th><th>Value</th></tr>"+a.table.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join("");
+ const L=ro5(P),ver=P.tpsa<=140&&P.rot<=10;
+ $("#lipbox").innerHTML=`<table><tr><th>Rule</th><th>Value</th><th>Limit</th><th></th></tr>${L.rows.map(r=>`<tr><td>${r[0]}</td><td>${f(r[1],r[0]=="Molecular weight"||r[0]=="LogP"?2:0)}</td><td>${r[2]}</td><td class="${r[3]?"ok":"bad"}">${r[3]?"✔ pass":"✘ violation"}</td></tr>`).join("")}</table>
+ <h3 class="${L.viol<=1?"ok":"bad"}">${L.viol==0?"✅ No violations – likely orally bioavailable":L.viol==1?"⚠️ 1 violation – still generally acceptable":"❌ "+L.viol+" violations – poor predicted oral bioavailability"}</h3>
+ <div class="sub">Bonus (Veber) rules: TPSA ≤ 140 Å² (${f(P.tpsa,1)}) and rotatable bonds ≤ 10 (${P.rot}) → <span class="${ver?"ok":"bad"}">${ver?"pass":"fail"}</span>. Rules are heuristics, not guarantees; some drug classes (e.g. natural products) are exceptions.</div>`;
+ report();if(active=="viz")render3D()}
+$("#dlp").onclick=()=>cur&&dl("properties.csv",csv([["Property","Value"],...cur.table]));
+function csv(r){return r.map(x=>x.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n")}
+function dl(n,t){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([t],{type:"text/csv"}));a.download=n;a.click()}
+// ---------- 3D
+function render3D(){if(!cur||!window.$3Dmol)return;const el=$("#v3d");if(!cur.sdf){el.innerHTML="<p style='color:#333;padding:20px'>3D structure not available for this molecule.</p>";return}
+ el.innerHTML="";viewer=$3Dmol.createViewer(el,{backgroundColor:"white"});viewer.addModel(cur.sdf,"sdf");
+ const S=$("#style").value;viewer.setStyle({},S=="bs"?{stick:{radius:.14},sphere:{scale:.25}}:S=="st"?{stick:{radius:.2}}:S=="sf"?{sphere:{}}:{line:{}});
+ if($("#vdw").checked)viewer.addSurface($3Dmol.SurfaceType.VDW,{opacity:.65,color:"lightblue"});viewer.zoomTo();viewer.render()}
+$("#style").onchange=$("#vdw").onchange=render3D;$("#gen").onclick=render3D;
+// ---------- compare
+let cseq=0;async function compare(){const id=++cseq,rows=$("#cin").value.split("\n").map(l=>l.trim()).filter(Boolean),out=[["Molecule","MW","LogP","TPSA","HBD","HBA","RotB","Rings","Ro5 violations"]];
+ for(const l of rows){const i=l.indexOf(","),n=i<0?l:l.slice(0,i).trim(),a=await analyze(i<0?l:l.slice(i+1),false);if(a&&a.ok){const P=a.P;out.push([n,f(P.mw,3),f(P.logp,3),f(P.tpsa),P.hbd,P.hba,P.rot,P.rings,ro5(P).viol])}else out.push([n,a&&a.net?"API unreachable":"invalid SMILES","","","","","","",""]);if(id!==cseq)return}
+ window.cdata=out;$("#ctab").innerHTML="<tr>"+out[0].map(h=>`<th>${h}</th>`).join("")+"</tr>"+out.slice(1).map(r=>"<tr>"+r.map(c=>`<td>${c}</td>`).join("")+"</tr>").join("")}
+$("#cin").oninput=()=>{clearTimeout(window.ct);window.ct=setTimeout(compare,500)};$("#dlc").onclick=()=>window.cdata&&dl("comparison.csv",csv(window.cdata));
+// ---------- periodic table
+const N="H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm Md No Lr Rf Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og".split(" ");
+const FN="Hydrogen Helium Lithium Beryllium Boron Carbon Nitrogen Oxygen Fluorine Neon Sodium Magnesium Aluminium Silicon Phosphorus Sulfur Chlorine Argon Potassium Calcium Scandium Titanium Vanadium Chromium Manganese Iron Cobalt Nickel Copper Zinc Gallium Germanium Arsenic Selenium Bromine Krypton Rubidium Strontium Yttrium Zirconium Niobium Molybdenum Technetium Ruthenium Rhodium Palladium Silver Cadmium Indium Tin Antimony Tellurium Iodine Xenon Caesium Barium Lanthanum Cerium Praseodymium Neodymium Promethium Samarium Europium Gadolinium Terbium Dysprosium Holmium Erbium Thulium Ytterbium Lutetium Hafnium Tantalum Tungsten Rhenium Osmium Iridium Platinum Gold Mercury Thallium Lead Bismuth Polonium Astatine Radon Francium Radium Actinium Thorium Protactinium Uranium Neptunium Plutonium Americium Curium Berkelium Californium Einsteinium Fermium Mendelevium Nobelium Lawrencium Rutherfordium Dubnium Seaborgium Bohrium Hassium Meitnerium Darmstadtium Roentgenium Copernicium Nihonium Flerovium Moscovium Livermorium Tennessine Oganesson".split(" ");
+const MS="1.008 4.0026 6.94 9.0122 10.81 12.011 14.007 15.999 18.998 20.180 22.990 24.305 26.982 28.085 30.974 32.06 35.45 39.948 39.098 40.078 44.956 47.867 50.942 51.996 54.938 55.845 58.933 58.693 63.546 65.38 69.723 72.630 74.922 78.971 79.904 83.798 85.468 87.62 88.906 91.224 92.906 95.95 98 101.07 102.91 106.42 107.87 112.41 114.82 118.71 121.76 127.60 126.90 131.29 132.91 137.33 138.91 140.12 140.91 144.24 145 150.36 151.96 157.25 158.93 162.50 164.93 167.26 168.93 173.05 174.97 178.49 180.95 183.84 186.21 190.23 192.22 195.08 196.97 200.59 204.38 207.2 208.98 209 210 222 223 226 227 232.04 231.04 238.03 237 244 243 247 247 251 252 257 258 259 266 267 268 269 270 277 278 281 282 285 286 289 290 293 294 294".split(" ").map(Number);
+const EN="2.20 0 .98 1.57 2.04 2.55 3.04 3.44 3.98 0 .93 1.31 1.61 1.90 2.19 2.58 3.16 0 .82 1.00 1.36 1.54 1.63 1.66 1.55 1.83 1.88 1.91 1.90 1.65 1.81 2.01 2.18 2.55 2.96 3.00 .82 .95 1.22 1.33 1.6 2.16 1.9 2.2 2.28 2.20 1.93 1.69 1.78 1.96 2.05 2.1 2.66 2.6 .79 .89 1.10 1.12 1.13 1.14 0 1.17 0 1.20 0 1.22 1.23 1.24 1.25 0 1.27 1.3 1.5 2.36 1.9 2.2 2.20 2.28 2.54 2.00 1.62 2.33 2.02 2.0 2.2 0 .7 .9 1.1 1.3 1.5 1.38 1.36 1.28 1.13 1.28 1.3 1.3 1.3 1.3 1.3 1.3 1.3".split(" ").map(Number);
+const E={};N.forEach((s,i)=>E[s]={z:i+1,n:FN[i],m:MS[i],en:EN[i]||0});
+const pos=z=>z==1?[1,1]:z==2?[1,18]:z<=4?[2,z-2]:z<=10?[2,z+8]:z<=12?[3,z-10]:z<=18?[3,z]:z<=36?[4,z-18]:z<=54?[5,z-36]:z<=56?[6,z-54]:z<=71?[9,z-54]:z<=86?[6,z-68]:z<=88?[7,z-86]:z<=103?[10,z-86]:[7,z-100];
+const R_=(a,b)=>Array.from({length:b-a+1},(_,i)=>a+i);
+const CAT=[["Alkali metal","#fca5a5",[3,11,19,37,55,87]],["Alkaline earth","#fdba74",[4,12,20,38,56,88]],["Nonmetal","#86efac",[1,6,7,8,15,16,34]],["Halogen","#5eead4",[9,17,35,53,85,117]],["Noble gas","#c4b5fd",[2,10,18,36,54,86,118]],["Metalloid","#bef264",[5,14,32,33,51,52]],["Lanthanide","#f9a8d4",R_(57,71)],["Actinide","#f0abfc",R_(89,103)],["Transition metal","#93c5fd",[...R_(21,30),...R_(39,48),...R_(72,80),...R_(104,112)]],["Post-transition metal","#cbd5e1",[]]];
+const cat=z=>CAT.find(c=>c[2].includes(z))||CAT[9];
+const ORB=[[1,0],[2,0],[2,1],[3,0],[3,1],[4,0],[3,2],[4,1],[5,0],[4,2],[5,1],[6,0],[4,3],[5,2],[6,1],[7,0],[5,3],[6,2],[7,1]],CAP=[2,6,10,14],LN="spdf";
+const EXC={24:["4s","3d",1],29:["4s","3d",1],41:["5s","4d",1],42:["5s","4d",1],44:["5s","4d",1],45:["5s","4d",1],46:["5s","4d",2],47:["5s","4d",1],57:["4f","5d",1],64:["4f","5d",1],78:["6s","5d",1],79:["6s","5d",1],89:["5f","6d",1],96:["5f","6d",1]};
+function config(z){let r=z;const o={};for(const[n,l]of ORB){if(r<=0)break;const c=Math.min(r,CAP[l]);o[n+LN[l]]=c;r-=c}
+ const x=EXC[z];if(x){o[x[0]]-=x[2];o[x[1]]=(o[x[1]]||0)+x[2]}
+ return Object.entries(o).filter(e=>e[1]>0).sort((a,b)=>a[0][0]-b[0][0]||LN.indexOf(a[0][1])-LN.indexOf(b[0][1])).map(e=>e[0]+"<sup>"+e[1]+"</sup>").join(" ")}
+N.forEach((s,i)=>{const z=i+1,[r,c]=pos(z),d=document.createElement("div");d.className="el";d.style.cssText=`grid-row:${r};grid-column:${c};background:${cat(z)[1]}`;d.innerHTML=`${z}<b>${s}</b>${E[s].m>=100?Math.round(E[s].m):f(E[s].m,1)}`;d.onclick=()=>{document.querySelectorAll(".el.sel").forEach(e=>e.classList.remove("sel"));d.classList.add("sel");const e=E[s];$("#eld").innerHTML=`<h3>${s} – ${e.n} (Z = ${z})</h3>Atomic mass: <b>${e.m}</b> g/mol · Electronegativity (Pauling): <b>${e.en||"n/a"}</b> · Category: <b>${cat(z)[0]}</b><br>Electron configuration (idealised Aufbau, common exceptions corrected): ${config(z)}`};$("#pt").append(d)});
+const PT=$("#pt");PT.style.gridTemplateRows="repeat(10,auto)";
+function parseF(s){const st=[{}],add=(o,k,n)=>o[k]=(o[k]||0)+n,re=/([A-Z][a-z]?)(\d*)|([(\[{])|([)\]}])(\d*)/g;let m,last=0;
+ while((m=re.exec(s))){if(m.index!==last)throw Error("Unexpected character near “"+s.slice(last,m.index+1)+"”");last=re.lastIndex;
+  if(m[1]){if(!E[m[1]])throw Error("Unknown element “"+m[1]+"”");add(st[st.length-1],m[1],+m[2]||1)}
+  else if(m[3])st.push({});else{if(st.length<2)throw Error("Unbalanced brackets");const t=st.pop(),n=+m[5]||1;for(const k in t)add(st[st.length-1],k,t[k]*n)}}
+ if(last!==s.length)throw Error("Unexpected character near “"+s.slice(last)[0]+"”");if(st.length!==1)throw Error("Unbalanced brackets");return st[0]}
+function molar(){const raw=$("#fin").value.replace(/\s/g,"");try{if(!raw)throw Error("Enter a formula");const tot={};raw.split(/[·.*•]/).forEach(p=>{const mm=p.match(/^(\d+)(.*)$/),k=mm?+mm[1]:1,c=parseF(mm?mm[2]:p);for(const e in c)tot[e]=(tot[e]||0)+c[e]*k});
+ const M=Object.keys(tot).reduce((s,e)=>s+tot[e]*E[e].m,0);
+ $("#fout").innerHTML=`<h3 class="ok">Molar mass of ${raw}: ${f(M,3)} g/mol</h3><table><tr><th>Element</th><th>Count</th><th>Atomic mass</th><th>Subtotal</th><th>Mass %</th></tr>${Object.keys(tot).map(e=>`<tr><td>${e} (${E[e].n})</td><td>${tot[e]}</td><td>${E[e].m}</td><td>${f(tot[e]*E[e].m,3)}</td><td>${f(tot[e]*E[e].m/M*100)}%</td></tr>`).join("")}</table>`}
+ catch(e){$("#fout").innerHTML=`<p class="bad">${e.message}</p>`}}
+$("#fcalc").onclick=molar;$("#fin").onkeydown=e=>e.key=="Enter"&&molar();
+["H2SO4","C6H12O6","Ca(OH)2","Al2(SO4)3","CuSO4·5H2O","NaCl"].forEach(x=>{const b=document.createElement("button");b.textContent=x;b.onclick=()=>{$("#fin").value=x;molar()};$("#fchips").append(b)});molar();
+// ---------- quiz
+const Q=[["What is the full form of SMILES?","Simplified Molecular Input Line Entry System","Standard Molecular Information Language Encoding System","Simple Molecular Identification and Labeling System"],["What does a SMILES string represent?","A molecular structure using text","A spectroscopy technique","A laboratory instrument"],["Which SMILES represents ethanol?","CCO","c1ccccc1","CC(=O)O"],["Which SMILES represents benzene?","c1ccccc1","CCO","O=C=O"],["In SMILES, parentheses mainly indicate:","Branches","Molecular weight","Atom colour"],["Which property is commonly associated with lipophilicity?","LogP","TPSA","HBD"],["What does TPSA describe?","Topological Polar Surface Area","Total Pi Surface Area","Thermal Property Surface Analysis"],["What does HBA mean?","Hydrogen Bond Acceptor","Heavy Bond Atom","Hydrogen Bond Analysis"],["What does HBD mean?","Hydrogen Bond Donor","Heavy Bond Descriptor","Hydrogen Bond Distance"],["A double bond contains how many pi (π) bonds?","1","2","0"],["A triple bond contains how many pi (π) bonds?","2","1","3"],["Which model is useful for visualizing approximate molecular volume?","Space Filling","Wireframe only","Text SMILES"],["Lipinski’s Rule of 5: maximum molecular weight for an oral drug?","500 Da","1000 Da","100 Da"]];
+$("#qs").innerHTML=Q.map((q,i)=>`<div class="q"><b>${i+1}. ${q[0]}</b>${q.slice(1).map((o,j)=>[o,j]).sort(()=>Math.random()-.5).map(([o,j])=>`<label><input type="radio" name="q${i}" value="${j}" style="width:auto"> ${o}</label>`).join("")}</div>`).join("");
+$("#qsub").onclick=()=>{let s=0;Q.forEach((q,i)=>{const c=document.querySelector(`input[name=q${i}]:checked`);if(c&&c.value==0)s++});const p=s/Q.length*100;window.score=s+"/"+Q.length;report();
+ const r=$("#qres");r.style.display="block";r.innerHTML=`<h3 class="${p>=60?"ok":"bad"}">Score: ${s} / ${Q.length} (${f(p,0)}%)</h3>${p==100?"Excellent! 🎉":p>=60?"Good work – review any missed topics in Theory.":"Please revisit the Theory page and try again."}`};
+// ---------- report
+["sn","rn"].forEach(id=>{try{$("#"+id).value=localStorage.getItem(id)||""}catch(e){}$("#"+id).oninput=()=>{try{localStorage.setItem(id,$("#"+id).value)}catch(e){}report()}});
+function report(){if(!cur){return}const a=cur,P=a.P,L=ro5(P);$("#repbody").innerHTML=`<h3>Cheminformatics Virtual Laboratory</h3><table><tr><td>Student</td><td>${esc($("#sn").value)||"—"}</td></tr><tr><td>Registration No.</td><td>${esc($("#rn").value)||"—"}</td></tr><tr><td>Date</td><td>${new Date().toLocaleDateString()}</td></tr><tr><td>Assessment score</td><td>${window.score||"not taken"}</td></tr></table><div class="two"><div class="white" style="max-width:300px">${a.svg}</div><table>${a.table.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join("")}</table></div><h3>Lipinski Rule of 5: ${L.viol} violation(s) – ${L.viol<=1?"likely drug-like (oral)":"unlikely oral drug"}</h3>`}
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+// ---------- boot
+show("home");
+$("#smi").value="CCO";run();
+</script></body></html>
